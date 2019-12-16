@@ -1,18 +1,39 @@
+import java.io.File;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import javax.imageio.ImageIO;
+
 import javafx.application.Application;
+import javafx.beans.value.ChangeListener;
+import javafx.embed.swing.SwingFXUtils;
+import javafx.event.ActionEvent;
+import javafx.event.Event;
+import javafx.event.EventHandler;
 import javafx.geometry.*;
 import javafx.scene.control.*;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.image.*;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Box;
-import javafx.scene.shape.Cylinder;
-import javafx.scene.shape.Sphere;
-import javafx.scene.transform.Translate;
+import javafx.scene.paint.*;
+import javafx.scene.shape.*;
+import javafx.scene.transform.*;
 import javafx.scene.Group;
 import javafx.scene.PerspectiveCamera;
 import javafx.scene.Scene;
 import javafx.scene.SceneAntialiasing;
+import javafx.scene.SnapshotParameters;
 import javafx.scene.SubScene;
 import javafx.stage.*;
+import javafx.stage.FileChooser.ExtensionFilter;
+
+/**
+ * 
+ * @author Kylan Parayao
+ * 
+ */
 
 public class ShapeEditor extends Application {
 
@@ -25,6 +46,7 @@ public class ShapeEditor extends Application {
 	private Label userPrompt;
 	private Label label1;
 	private Label label2;
+	private Label subSceneColorChangeLabel;
 	private Label sphereRadiusLabel;
 	private Label boxWidthLabel;
 	private Label boxHeightLabel;
@@ -42,7 +64,7 @@ public class ShapeEditor extends Application {
 	private Cylinder cylinder;
 	private Group shapesGroup;
 	private PerspectiveCamera pCamera;
-	private VBox rootNode;
+	private BorderPane rootNode;
 	private HBox topLabelBox;
 	private HBox selectShapeBox;
 	private VBox midLabel1Box;
@@ -50,13 +72,52 @@ public class ShapeEditor extends Application {
 	private VBox editBox;
 	private HBox submitBox;
 	private HBox xyBox;
+	private VBox shapeTransformBox;
 	private VBox sphereBox;
 	private VBox cylinderBox;
 	private VBox boxBox;
+	private VBox shapeBox;
 	private int xVal;
 	private int yVal;
 	private double sphereRadius;
 	private TextField sphereRadiusField;
+	private Label rotateLabel;
+	private Slider rotateXSlider;
+	private Slider rotateYSlider;
+	private Slider rotateZSlider;
+	private Label rotateXLabel;
+	private Label rotateYLabel;
+	private Label rotateZLabel;
+	private Rotate rotateXBox;
+	private Rotate rotateYBox;
+	private Rotate rotateZBox;
+	private Rotate rotateXSphere;
+	private Rotate rotateYSphere;
+	private Rotate rotateZSphere;
+	private Rotate rotateXCylinder;
+	private Rotate rotateYCylinder;
+	private Rotate rotateZCylinder;
+	private Label translateLabel;
+	private Slider translateXSlider;
+	private Slider translateYSlider;
+	private Slider translateZSlider;
+	private Label translateXLabel;
+	private Label translateYLabel;
+	private Label translateZLabel;
+	private Translate translateXBox;
+	private Translate translateYBox;
+	private Translate translateZBox;
+	private Translate translateXSphere;
+	private Translate translateYSphere;
+	private Translate translateZSphere;
+	private Translate translateXCylinder;
+	private Translate translateYCylinder;
+	private Translate translateZCylinder;
+	private Label scaleLabel;
+	private Slider scaleSlider;
+	private Scale scaleBox;
+	private Scale scaleSphere;
+	private Scale scaleCylinder;
 	private double boxWidth;
 	private double boxHeight;
 	private double boxDepth;
@@ -67,6 +128,22 @@ public class ShapeEditor extends Application {
 	private double cylinderHeight;
 	private TextField cylinderRadiusField;
 	private TextField cylinderHeightField;
+	private ColorPicker subSceneColorPicker;
+	private Label shapeColorPickerLabel;
+	private ColorPicker shapeColorPicker;
+	private EventHandler<MouseEvent> eventHandlerBox;
+	private EventHandler<MouseEvent> eventHandlerSphere;
+	private EventHandler<MouseEvent> eventHandlerCylinder;
+	private MenuBar menuBar;
+	private Menu fileMenu;
+	private MenuItem savePictureItem;
+	private MenuItem editPictureItem;
+	private FileChooser fileChooser;
+	private Label selectedShapeLabel;
+	private Button resetTransformationButton;
+	private Button cancelButton;
+	private Button clearShapeButton;
+	private Button enableShapePropertiesButton;
 
 	public static void main(String[] args) {
 		launch(args);
@@ -85,10 +162,15 @@ public class ShapeEditor extends Application {
 		xyBox = new HBox(10);
 		editBox = new VBox(10);
 		submitBox = new HBox(10);
+		subSceneColorPicker = new ColorPicker();
+		shapeColorPicker = new ColorPicker();
 
-		label2 = new Label("Determine X-Position and Y-Position");
-		xField = new TextField();
-		yField = new TextField();
+		label2 = new Label("Determine X-coordinate and Y-coordinate");
+		xField = new TextField("0");
+		yField = new TextField("0");
+		xField.setPromptText("X-Coordiante Here");
+		yField.setPromptText("Y-Coordinate Here");
+
 		sphereRadiusField = new TextField();
 		boxWidthField = new TextField();
 		boxDepthField = new TextField();
@@ -97,11 +179,11 @@ public class ShapeEditor extends Application {
 		cylinderHeightField = new TextField();
 		addShapeButton = new Button("Add Shape");
 		submitButton = new Button("Submit");
+		cancelButton = new Button("Cancel");
 
-		rootNode = new VBox(10);
-		rootNode.setAlignment(Pos.CENTER);
+		rootNode = new BorderPane();
 		shapesGroup = new Group();
-		shapesSub = new SubScene(shapesGroup, 500, 500, true, SceneAntialiasing.DISABLED);
+		shapesSub = new SubScene(shapesGroup, 800, 700, true, SceneAntialiasing.DISABLED);
 
 		pCamera = new PerspectiveCamera(true);
 		pCamera.getTransforms().addAll(new Translate(0, 0, -60));
@@ -116,13 +198,97 @@ public class ShapeEditor extends Application {
 		boxCB = new CheckBox("Box");
 		sphereCB = new CheckBox("Sphere");
 		cylinderCB = new CheckBox("Cylinder");
-		label1 = new Label("Select Shapes");
+		label1 = new Label("Select a Shape");
 		sphereRadiusLabel = new Label("Radius");
 		boxWidthLabel = new Label("Width");
 		boxHeightLabel = new Label("Height");
 		boxDepthLabel = new Label("Depth");
 		cylinderRadiusLabel = new Label("Radius");
 		cylinderHeightLabel = new Label("Height");
+
+		boxWidthField.setDisable(true);
+		boxDepthField.setDisable(true);
+		boxHeightField.setDisable(true);
+		sphereRadiusField.setDisable(true);
+		cylinderRadiusField.setDisable(true);
+		cylinderHeightField.setDisable(true);
+		submitButton.setDisable(true);
+
+		EventHandler<MouseEvent> boxCBEventHandler = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				boxWidthField.setDisable(false);
+				boxDepthField.setDisable(false);
+				boxHeightField.setDisable(false);
+				submitButton.setDisable(false);
+
+			}
+
+		};
+
+		EventHandler<MouseEvent> boxCBDefaultHandler = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				boxWidthField.setDisable(true);
+				boxDepthField.setDisable(true);
+				boxHeightField.setDisable(true);
+				submitButton.setDisable(true);
+
+			}
+
+		};
+
+		EventHandler<MouseEvent> sphereCBEventHandler = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				sphereRadiusField.setDisable(false);
+				submitButton.setDisable(false);
+			}
+
+		};
+
+		EventHandler<MouseEvent> sphereCBDefaultHandler = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				sphereRadiusField.setDisable(true);
+				submitButton.setDisable(true);
+			}
+
+		};
+
+		EventHandler<MouseEvent> cylinderCBEventHandler = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				sphereRadiusField.setDisable(false);
+				cylinderRadiusField.setDisable(false);
+				cylinderHeightField.setDisable(false);
+				submitButton.setDisable(false);
+
+			}
+
+		};
+
+		EventHandler<MouseEvent> cylinderCBDefaultHandler = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				sphereRadiusField.setDisable(true);
+				cylinderRadiusField.setDisable(true);
+				cylinderHeightField.setDisable(true);
+				submitButton.setDisable(true);
+
+			}
+
+		};
+
+		boxCB.addEventHandler(MouseEvent.MOUSE_CLICKED, boxCBEventHandler);
+		cylinderCB.addEventHandler(MouseEvent.MOUSE_CLICKED, cylinderCBEventHandler);
+		sphereCB.addEventHandler(MouseEvent.MOUSE_CLICKED, sphereCBEventHandler);
 
 		boxBox.getChildren().addAll(boxCB, boxWidthLabel, boxWidthField, boxHeightLabel, boxHeightField, boxDepthLabel,
 				boxDepthField);
@@ -151,40 +317,333 @@ public class ShapeEditor extends Application {
 			refreshShapeEditor();
 		});
 
+		rotateLabel = new Label("Rotate Shape Parameters");
+		rotateXLabel = new Label("Rotate Across X-Axis");
+		rotateYLabel = new Label("Rotate Across Y-Axis");
+		rotateZLabel = new Label("Rotate Across Z-Axis");
+		translateLabel = new Label("Translate Shape Parameters");
+		translateXLabel = new Label("Translate Across X-Axis");
+		translateYLabel = new Label("Translate Across Y-Axis");
+		translateZLabel = new Label("Translate Across Z-Axis");
+		scaleLabel = new Label("Scale Shape");
+
+		rotateXSlider = new Slider(-90, 90, 0);
+		rotateXSlider.setShowTickLabels(true);
+		rotateXSlider.setShowTickMarks(true);
+
+		rotateYSlider = new Slider(-90, 90, 0);
+		rotateYSlider.setShowTickLabels(true);
+		rotateYSlider.setShowTickMarks(true);
+
+		rotateZSlider = new Slider(-90, 90, 0);
+		rotateZSlider.setShowTickLabels(true);
+		rotateZSlider.setShowTickMarks(true);
+
+		translateXSlider = new Slider(-1, 1, 0);
+		translateXSlider.setShowTickLabels(true);
+		translateXSlider.setShowTickMarks(true);
+
+		translateYSlider = new Slider(-1, 1, 0);
+		translateYSlider.setShowTickLabels(true);
+		translateYSlider.setShowTickMarks(true);
+
+		translateZSlider = new Slider(-1, 1, 0);
+		translateZSlider.setShowTickLabels(true);
+		translateZSlider.setShowTickMarks(true);
+
+		scaleSlider = new Slider(.25, 2, 1);
+		scaleSlider.setShowTickLabels(true);
+		scaleSlider.setShowTickMarks(true);
+
+		shapeColorPickerLabel = new Label("Change Shape Color");
+
+		selectedShapeLabel = new Label("Selected Shape:\t\t");
+
+		eventHandlerBox = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+
+				rotateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double boxRotateXAxis = rotateXSlider.getValue();
+					rotateXBox = new Rotate(boxRotateXAxis, Rotate.X_AXIS);
+					box.getTransforms().add(rotateXBox);
+				});
+				rotateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double boxRotateYAxis = rotateYSlider.getValue();
+					rotateYBox = new Rotate(boxRotateYAxis, Rotate.Y_AXIS);
+					box.getTransforms().add(rotateYBox);
+				});
+				rotateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double boxRotateZAxis = rotateZSlider.getValue();
+					rotateZBox = new Rotate(boxRotateZAxis, Rotate.Z_AXIS);
+					box.getTransforms().add(rotateZBox);
+				});
+				translateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double boxTranslateXAxis = translateXSlider.getValue();
+					translateXBox = new Translate(boxTranslateXAxis, 0, 0);
+					box.getTransforms().add(translateXBox);
+				});
+				translateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double boxTranslateYAxis = translateYSlider.getValue();
+					translateYBox = new Translate(0, boxTranslateYAxis, 0);
+					box.getTransforms().add(translateYBox);
+				});
+				translateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double boxTranslateZAxis = translateZSlider.getValue();
+					translateZBox = new Translate(0, 0, boxTranslateZAxis);
+					box.getTransforms().add(translateZBox);
+				});
+
+				scaleSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double scaleValue = scaleSlider.getValue();
+					scaleBox = new Scale(scaleValue, scaleValue, scaleValue);
+					box.getTransforms().add(scaleBox);
+				});
+
+				shapeColorPicker.setOnAction(new EventHandler() {
+					public void handle(Event e) {
+						box.setMaterial(new PhongMaterial(shapeColorPicker.getValue()));
+					}
+				});
+
+				selectedShapeLabel.setText("Selected Shape: Box is selected");
+
+			}
+
+		};
+
+		eventHandlerSphere = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				rotateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double sphereRotateXAxis = rotateXSlider.getValue();
+					rotateXSphere = new Rotate(sphereRotateXAxis, Rotate.X_AXIS);
+					sphere.getTransforms().add(rotateXSphere);
+				});
+				rotateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double sphereRotateYAxis = rotateYSlider.getValue();
+					rotateYSphere = new Rotate(sphereRotateYAxis, Rotate.Y_AXIS);
+					sphere.getTransforms().add(rotateYSphere);
+				});
+				rotateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double sphereRotateZAxis = rotateZSlider.getValue();
+					rotateZSphere = new Rotate(sphereRotateZAxis, Rotate.Z_AXIS);
+					sphere.getTransforms().add(rotateZSphere);
+				});
+				translateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double sphereTranslateXAxis = translateXSlider.getValue();
+					translateXSphere = new Translate(sphereTranslateXAxis, 0, 0);
+					sphere.getTransforms().add(translateXSphere);
+				});
+				translateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double sphereTranslateYAxis = translateYSlider.getValue();
+					translateYSphere = new Translate(0, sphereTranslateYAxis, 0);
+					sphere.getTransforms().add(translateYSphere);
+				});
+				translateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double sphereTranslateZAxis = translateZSlider.getValue();
+					translateZSphere = new Translate(0, 0, sphereTranslateZAxis);
+					sphere.getTransforms().add(translateZSphere);
+				});
+				scaleSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double scaleValue = scaleSlider.getValue();
+					scaleSphere = new Scale(scaleValue, scaleValue, scaleValue);
+					sphere.getTransforms().add(scaleSphere);
+				});
+
+				shapeColorPicker.setOnAction(new EventHandler() {
+					public void handle(Event e) {
+						sphere.setMaterial(new PhongMaterial(shapeColorPicker.getValue()));
+					}
+				});
+
+				selectedShapeLabel.setText("Selected Shape: Sphere is selected");
+
+			}
+
+		};
+
+		eventHandlerCylinder = new EventHandler<MouseEvent>() {
+
+			@Override
+			public void handle(MouseEvent event) {
+				rotateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double cylinderRotateXAxis = rotateXSlider.getValue();
+					rotateXCylinder = new Rotate(cylinderRotateXAxis, Rotate.X_AXIS);
+					cylinder.getTransforms().add(rotateXCylinder);
+				});
+				rotateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double cylinderRotateYAxis = rotateYSlider.getValue();
+					rotateYCylinder = new Rotate(cylinderRotateYAxis, Rotate.Y_AXIS);
+					cylinder.getTransforms().add(rotateYCylinder);
+				});
+				rotateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double cylinderRotateZAxis = rotateZSlider.getValue();
+					rotateZCylinder = new Rotate(cylinderRotateZAxis, Rotate.Z_AXIS);
+					cylinder.getTransforms().add(rotateZCylinder);
+				});
+				translateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double cylinderTranslateXAxis = translateXSlider.getValue();
+					translateXCylinder = new Translate(cylinderTranslateXAxis, 0, 0);
+					cylinder.getTransforms().add(translateXCylinder);
+				});
+				translateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double cylinderTranslateYAxis = translateYSlider.getValue();
+					translateYCylinder = new Translate(0, cylinderTranslateYAxis, 0);
+					cylinder.getTransforms().add(translateYCylinder);
+				});
+				translateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double cylinderTranslateZAxis = translateZSlider.getValue();
+					translateZCylinder = new Translate(0, 0, cylinderTranslateZAxis);
+					cylinder.getTransforms().add(translateZCylinder);
+				});
+				scaleSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+					double scaleValue = scaleSlider.getValue();
+					scaleCylinder = new Scale(scaleValue, scaleValue, scaleValue);
+					cylinder.getTransforms().add(scaleCylinder);
+				});
+
+				shapeColorPicker.setOnAction(new EventHandler() {
+					public void handle(Event e) {
+						cylinder.setMaterial(new PhongMaterial(shapeColorPicker.getValue()));
+					}
+				});
+
+				selectedShapeLabel.setText("Selected Shape: Cylinder is selected");
+
+			}
+
+		};
+
 		submitButton.setOnAction(event -> {
 			xVal = Integer.parseInt(xField.getText());
 			yVal = Integer.parseInt(yField.getText());
+			if (xVal > 20 || yVal > 20 || xVal < -20 || yVal < -20) {
+				Alert errorAlert = new Alert(AlertType.ERROR,
+						"The parameters entered for X and Y are not valid. Default to origin.");
+				errorAlert.showAndWait();
+				xVal = 0;
+				yVal = 0;
+			}
 			if (boxCB.isSelected()) {
 				boxWidth = Double.parseDouble(boxWidthField.getText());
 				boxHeight = Double.parseDouble(boxHeightField.getText());
 				boxDepth = Double.parseDouble(boxDepthField.getText());
+				if (boxWidth < 0 || boxHeight < 0 || boxDepth < 0) {
+					Alert errorAlert = new Alert(AlertType.ERROR,
+							"The parameters entered for box radius is not valid. Default to 2.");
+					errorAlert.showAndWait();
+					boxWidth = 2;
+					boxHeight = 2;
+					boxDepth = 2;
+				}
 				box = new Box(boxWidth, boxHeight, boxDepth);
 				shapesGroup.getChildren().add(box);
 				box.getTransforms().addAll(new Translate(xVal, yVal, 0));
+				box.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerBox);
 			}
 			if (sphereCB.isSelected()) {
 				sphereRadius = Double.parseDouble(sphereRadiusField.getText());
+				if (sphereRadius < 0) {
+					Alert errorAlert = new Alert(AlertType.ERROR,
+							"The parameter entered for sphere is not valid. Default to 2.");
+					errorAlert.showAndWait();
+					sphereRadius = 2;
+				}
 				sphere = new Sphere(sphereRadius);
 				shapesGroup.getChildren().add(sphere);
 				sphere.getTransforms().addAll(new Translate(xVal, yVal, 0));
+				sphere.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerSphere);
 			}
 			if (cylinderCB.isSelected()) {
 				cylinderRadius = Double.parseDouble(cylinderRadiusField.getText());
 				cylinderHeight = Double.parseDouble(cylinderHeightField.getText());
+				if (cylinderRadius < 0 || cylinderHeight < 0) {
+					Alert errorAlert = new Alert(AlertType.ERROR,
+							"The parameters entered for box cylinder is not valid. Default to 2.");
+					errorAlert.showAndWait();
+					cylinderRadius = 2;
+					cylinderHeight = 2;
+				}
 				cylinder = new Cylinder(cylinderRadius, cylinderHeight);
 				shapesGroup.getChildren().add(cylinder);
 				cylinder.getTransforms().addAll(new Translate(xVal, yVal, 0));
+				cylinder.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerCylinder);
 			}
 			pCamera = new PerspectiveCamera(true);
 			pCamera.getTransforms().addAll(new Translate(0, 0, -60));
 			shapesSub.setCamera(pCamera);
 			window.setScene(firstScene);
+			refreshFirstScene();
 		});
 
-		shapesSub.setFill(Color.AZURE);
-		rootNode.getChildren().addAll(shapesSub, addShapeButton);
+		cancelButton.setOnAction(event -> {
+			window.setScene(firstScene);
+			refreshFirstScene();
+		});
 
-		submitBox.getChildren().add(submitButton);
+		resetTransformationButton = new Button("Reset Transformations");
+
+		resetTransformationButton.setOnAction(event -> {
+			rotateXSlider.setValue(0);
+			rotateYSlider.setValue(0);
+			rotateZSlider.setValue(0);
+			translateXSlider.setValue(0);
+			translateYSlider.setValue(0);
+			translateZSlider.setValue(0);
+			scaleSlider.setValue(1);
+		});
+
+		clearShapeButton = new Button("Clear Shapes");
+
+		clearShapeButton.setOnAction(event -> {
+			shapesGroup.getChildren().removeAll(box, sphere, cylinder);
+		});
+
+		subSceneColorPicker.setValue(Color.AZURE);
+
+		subSceneColorPicker.setOnAction(new EventHandler() {
+			public void handle(Event e) {
+				shapesSub.setFill(subSceneColorPicker.getValue());
+			}
+		});
+
+		subSceneColorChangeLabel = new Label("Change SubScene Color: ");
+		shapesSub.setFill(Color.AZURE);
+
+		shapeBox = new VBox(10);
+		HBox subSceneColorBox = new HBox(10);
+		subSceneColorBox.getChildren().addAll(addShapeButton, clearShapeButton, subSceneColorChangeLabel,
+				subSceneColorPicker, selectedShapeLabel);
+		subSceneColorBox.setAlignment(Pos.CENTER);
+
+		shapeBox.getChildren().addAll(shapesSub, subSceneColorBox);
+		shapeBox.setAlignment(Pos.CENTER);
+		shapeBox.setPadding(new Insets(15));
+
+		shapeTransformBox = new VBox(10);
+
+		shapeTransformBox.getChildren().addAll(resetTransformationButton, rotateLabel, rotateXLabel, rotateXSlider,
+				rotateYLabel, rotateYSlider, rotateZLabel, rotateZSlider, translateLabel, translateXLabel,
+				translateXSlider, translateYLabel, translateYSlider, translateZLabel, translateZSlider, scaleLabel,
+				scaleSlider, shapeColorPickerLabel, shapeColorPicker);
+		shapeTransformBox.setPadding(new Insets(10));
+		shapeTransformBox.setAlignment(Pos.CENTER);
+
+		menuBar = new MenuBar();
+		fileMenu = new Menu("File");
+		savePictureItem = new MenuItem("Save Image");
+		editPictureItem = new MenuItem("Edit Image");
+		fileMenu.getItems().addAll(savePictureItem, editPictureItem);
+		menuBar.getMenus().add(fileMenu);
+
+		rootNode.setTop(menuBar);
+		rootNode.setCenter(shapeBox);
+		rootNode.setRight(shapeTransformBox);
+
+		submitBox.getChildren().addAll(submitButton, cancelButton);
 		submitBox.setPadding(new Insets(10));
 		submitBox.setAlignment(Pos.CENTER);
 
@@ -194,7 +653,43 @@ public class ShapeEditor extends Application {
 
 		sceneShapeEditor = new Scene(borderPane, 600, 600);
 
-		firstScene = new Scene(rootNode, 600, 600);
+		firstScene = new Scene(rootNode, 1000, 1000);
+
+		ImageView imageView = new ImageView();
+
+		savePictureItem.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				fileChooser = new FileChooser();
+
+				WritableImage image = shapesSub.snapshot(new SnapshotParameters(), null);
+				imageView.setImage(image);
+
+				File file = fileChooser.showSaveDialog(window);
+				if (file != null) {
+					try {
+						ImageIO.write(SwingFXUtils.fromFXImage(imageView.getImage(), null), "png", file);
+					} catch (IOException ex) {
+						Logger.getLogger(ShapeEditor.class.getName()).log(Level.SEVERE, null, ex);
+					}
+				}
+
+			}
+
+		});
+
+		editPictureItem.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				FileChooser fileChooser = new FileChooser();
+				fileChooser.getExtensionFilters().add(new ExtensionFilter("*.png", "*.jpg", "*.txt"));
+				File selectedFile = fileChooser.showOpenDialog(primaryStage);
+			}
+
+		});
+
 		window.setScene(firstScene);
 		window.setTitle("Shape Editor");
 		window.show();
@@ -213,4 +708,15 @@ public class ShapeEditor extends Application {
 		cylinderRadiusField.clear();
 		cylinderHeightField.clear();
 	}
+
+	private void refreshFirstScene() {
+		rotateXSlider.setValue(0);
+		rotateYSlider.setValue(0);
+		rotateZSlider.setValue(0);
+		translateXSlider.setValue(0);
+		translateYSlider.setValue(0);
+		translateZSlider.setValue(0);
+		scaleSlider.setValue(1);
+	}
+
 }
