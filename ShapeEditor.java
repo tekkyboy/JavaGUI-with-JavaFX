@@ -1,12 +1,27 @@
+package test;
+
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
+import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 
 import javafx.application.Application;
-import javafx.beans.value.ChangeListener;
+import javafx.collections.ObservableList;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -143,7 +158,18 @@ public class ShapeEditor extends Application {
 	private Button resetTransformationButton;
 	private Button cancelButton;
 	private Button clearShapeButton;
-	private Button enableShapePropertiesButton;
+	private ArrayList shapeArray;
+	private Shape3D selectedShape = null;
+	private String boxString;
+	private String sphereString;
+	private String cylinderString;
+	private boolean boxExists;
+	private boolean sphereExists;
+	private boolean cylinderExists;
+
+	private String bColor = null;
+	private String sColor = null;
+	private String cColor = null;
 
 	public static void main(String[] args) {
 		launch(args);
@@ -151,6 +177,7 @@ public class ShapeEditor extends Application {
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
+		shapeArray = new ArrayList();
 		window = primaryStage;
 		topLabelBox = new HBox(10);
 		selectShapeBox = new HBox(10);
@@ -168,15 +195,13 @@ public class ShapeEditor extends Application {
 		label2 = new Label("Determine X-coordinate and Y-coordinate");
 		xField = new TextField("0");
 		yField = new TextField("0");
-		xField.setPromptText("X-Coordiante Here");
-		yField.setPromptText("Y-Coordinate Here");
 
-		sphereRadiusField = new TextField();
-		boxWidthField = new TextField();
-		boxDepthField = new TextField();
-		boxHeightField = new TextField();
-		cylinderRadiusField = new TextField();
-		cylinderHeightField = new TextField();
+		sphereRadiusField = new TextField("2");
+		boxWidthField = new TextField("2");
+		boxDepthField = new TextField("2");
+		boxHeightField = new TextField("2");
+		cylinderRadiusField = new TextField("2");
+		cylinderHeightField = new TextField("2");
 		addShapeButton = new Button("Add Shape");
 		submitButton = new Button("Submit");
 		cancelButton = new Button("Cancel");
@@ -227,19 +252,6 @@ public class ShapeEditor extends Application {
 
 		};
 
-		EventHandler<MouseEvent> boxCBDefaultHandler = new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent event) {
-				boxWidthField.setDisable(true);
-				boxDepthField.setDisable(true);
-				boxHeightField.setDisable(true);
-				submitButton.setDisable(true);
-
-			}
-
-		};
-
 		EventHandler<MouseEvent> sphereCBEventHandler = new EventHandler<MouseEvent>() {
 
 			@Override
@@ -250,37 +262,13 @@ public class ShapeEditor extends Application {
 
 		};
 
-		EventHandler<MouseEvent> sphereCBDefaultHandler = new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent event) {
-				sphereRadiusField.setDisable(true);
-				submitButton.setDisable(true);
-			}
-
-		};
-
 		EventHandler<MouseEvent> cylinderCBEventHandler = new EventHandler<MouseEvent>() {
 
 			@Override
 			public void handle(MouseEvent event) {
-				sphereRadiusField.setDisable(false);
 				cylinderRadiusField.setDisable(false);
 				cylinderHeightField.setDisable(false);
 				submitButton.setDisable(false);
-
-			}
-
-		};
-
-		EventHandler<MouseEvent> cylinderCBDefaultHandler = new EventHandler<MouseEvent>() {
-
-			@Override
-			public void handle(MouseEvent event) {
-				sphereRadiusField.setDisable(true);
-				cylinderRadiusField.setDisable(true);
-				cylinderHeightField.setDisable(true);
-				submitButton.setDisable(true);
 
 			}
 
@@ -365,50 +353,69 @@ public class ShapeEditor extends Application {
 			public void handle(MouseEvent event) {
 
 				rotateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double boxRotateXAxis = rotateXSlider.getValue();
-					rotateXBox = new Rotate(boxRotateXAxis, Rotate.X_AXIS);
-					box.getTransforms().add(rotateXBox);
+					if (selectedShape == box) {
+						double boxRotateXAxis = rotateXSlider.getValue();
+						rotateXBox = new Rotate(boxRotateXAxis, Rotate.X_AXIS);
+						box.getTransforms().add(rotateXBox);
+					}
 				});
 				rotateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double boxRotateYAxis = rotateYSlider.getValue();
-					rotateYBox = new Rotate(boxRotateYAxis, Rotate.Y_AXIS);
-					box.getTransforms().add(rotateYBox);
+					if (selectedShape == box) {
+						double boxRotateYAxis = rotateYSlider.getValue();
+						rotateYBox = new Rotate(boxRotateYAxis, Rotate.Y_AXIS);
+						box.getTransforms().add(rotateYBox);
+					}
 				});
 				rotateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double boxRotateZAxis = rotateZSlider.getValue();
-					rotateZBox = new Rotate(boxRotateZAxis, Rotate.Z_AXIS);
-					box.getTransforms().add(rotateZBox);
+					if (selectedShape == box) {
+						double boxRotateZAxis = rotateZSlider.getValue();
+						rotateZBox = new Rotate(boxRotateZAxis, Rotate.Z_AXIS);
+						box.getTransforms().add(rotateZBox);
+					}
 				});
 				translateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double boxTranslateXAxis = translateXSlider.getValue();
-					translateXBox = new Translate(boxTranslateXAxis, 0, 0);
-					box.getTransforms().add(translateXBox);
+					if (selectedShape == box) {
+						double boxTranslateXAxis = translateXSlider.getValue();
+						translateXBox = new Translate(boxTranslateXAxis, 0, 0);
+						box.getTransforms().add(translateXBox);
+					}
 				});
 				translateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double boxTranslateYAxis = translateYSlider.getValue();
-					translateYBox = new Translate(0, boxTranslateYAxis, 0);
-					box.getTransforms().add(translateYBox);
+					if (selectedShape == box) {
+						double boxTranslateYAxis = translateYSlider.getValue();
+						translateYBox = new Translate(0, boxTranslateYAxis, 0);
+						box.getTransforms().add(translateYBox);
+					}
 				});
 				translateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double boxTranslateZAxis = translateZSlider.getValue();
-					translateZBox = new Translate(0, 0, boxTranslateZAxis);
-					box.getTransforms().add(translateZBox);
+					if (selectedShape == box) {
+						double boxTranslateZAxis = translateZSlider.getValue();
+						translateZBox = new Translate(0, 0, boxTranslateZAxis);
+						box.getTransforms().add(translateZBox);
+					}
 				});
 
 				scaleSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double scaleValue = scaleSlider.getValue();
-					scaleBox = new Scale(scaleValue, scaleValue, scaleValue);
-					box.getTransforms().add(scaleBox);
+					if (selectedShape == box) {
+						double scaleValue = scaleSlider.getValue();
+						scaleBox = new Scale(scaleValue, scaleValue, scaleValue);
+						box.getTransforms().add(scaleBox);
+					}
 				});
 
 				shapeColorPicker.setOnAction(new EventHandler() {
 					public void handle(Event e) {
 						box.setMaterial(new PhongMaterial(shapeColorPicker.getValue()));
+						bColor = shapeColorPicker.getValue().toString();
+						box.setUserData(bColor);
+
 					}
 				});
 
 				selectedShapeLabel.setText("Selected Shape: Box is selected");
+				selectedShape = box;
 
+				boxExists = true;
 			}
 
 		};
@@ -417,49 +424,68 @@ public class ShapeEditor extends Application {
 
 			@Override
 			public void handle(MouseEvent event) {
+
 				rotateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double sphereRotateXAxis = rotateXSlider.getValue();
-					rotateXSphere = new Rotate(sphereRotateXAxis, Rotate.X_AXIS);
-					sphere.getTransforms().add(rotateXSphere);
+					if (selectedShape == sphere) {
+						double sphereRotateXAxis = rotateXSlider.getValue();
+						rotateXSphere = new Rotate(sphereRotateXAxis, Rotate.X_AXIS);
+						sphere.getTransforms().add(rotateXSphere);
+					}
 				});
 				rotateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double sphereRotateYAxis = rotateYSlider.getValue();
-					rotateYSphere = new Rotate(sphereRotateYAxis, Rotate.Y_AXIS);
-					sphere.getTransforms().add(rotateYSphere);
+					if (selectedShape == sphere) {
+						double sphereRotateYAxis = rotateYSlider.getValue();
+						rotateYSphere = new Rotate(sphereRotateYAxis, Rotate.Y_AXIS);
+						sphere.getTransforms().add(rotateYSphere);
+					}
 				});
 				rotateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double sphereRotateZAxis = rotateZSlider.getValue();
-					rotateZSphere = new Rotate(sphereRotateZAxis, Rotate.Z_AXIS);
-					sphere.getTransforms().add(rotateZSphere);
+					if (selectedShape == sphere) {
+						double sphereRotateZAxis = rotateZSlider.getValue();
+						rotateZSphere = new Rotate(sphereRotateZAxis, Rotate.Z_AXIS);
+						sphere.getTransforms().add(rotateZSphere);
+					}
 				});
 				translateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double sphereTranslateXAxis = translateXSlider.getValue();
-					translateXSphere = new Translate(sphereTranslateXAxis, 0, 0);
-					sphere.getTransforms().add(translateXSphere);
+					if (selectedShape == sphere) {
+						double sphereTranslateXAxis = translateXSlider.getValue();
+						translateXSphere = new Translate(sphereTranslateXAxis, 0, 0);
+						sphere.getTransforms().add(translateXSphere);
+					}
 				});
 				translateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double sphereTranslateYAxis = translateYSlider.getValue();
-					translateYSphere = new Translate(0, sphereTranslateYAxis, 0);
-					sphere.getTransforms().add(translateYSphere);
+					if (selectedShape == sphere) {
+						double sphereTranslateYAxis = translateYSlider.getValue();
+						translateYSphere = new Translate(0, sphereTranslateYAxis, 0);
+						sphere.getTransforms().add(translateYSphere);
+					}
 				});
 				translateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double sphereTranslateZAxis = translateZSlider.getValue();
-					translateZSphere = new Translate(0, 0, sphereTranslateZAxis);
-					sphere.getTransforms().add(translateZSphere);
+					if (selectedShape == sphere) {
+						double sphereTranslateZAxis = translateZSlider.getValue();
+						translateZSphere = new Translate(0, 0, sphereTranslateZAxis);
+						sphere.getTransforms().add(translateZSphere);
+					}
 				});
 				scaleSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double scaleValue = scaleSlider.getValue();
-					scaleSphere = new Scale(scaleValue, scaleValue, scaleValue);
-					sphere.getTransforms().add(scaleSphere);
+					if (selectedShape == sphere) {
+						double scaleValue = scaleSlider.getValue();
+						scaleSphere = new Scale(scaleValue, scaleValue, scaleValue);
+						sphere.getTransforms().add(scaleSphere);
+					}
 				});
 
 				shapeColorPicker.setOnAction(new EventHandler() {
 					public void handle(Event e) {
 						sphere.setMaterial(new PhongMaterial(shapeColorPicker.getValue()));
+						sColor = shapeColorPicker.getValue().toString();
+						sphere.setUserData(sColor);
 					}
 				});
 
 				selectedShapeLabel.setText("Selected Shape: Sphere is selected");
+				selectedShape = sphere;
+				sphereExists = true;
 
 			}
 
@@ -469,49 +495,68 @@ public class ShapeEditor extends Application {
 
 			@Override
 			public void handle(MouseEvent event) {
+
 				rotateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double cylinderRotateXAxis = rotateXSlider.getValue();
-					rotateXCylinder = new Rotate(cylinderRotateXAxis, Rotate.X_AXIS);
-					cylinder.getTransforms().add(rotateXCylinder);
+					if (selectedShape == cylinder) {
+						double cylinderRotateXAxis = rotateXSlider.getValue();
+						rotateXCylinder = new Rotate(cylinderRotateXAxis, Rotate.X_AXIS);
+						cylinder.getTransforms().add(rotateXCylinder);
+					}
 				});
 				rotateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double cylinderRotateYAxis = rotateYSlider.getValue();
-					rotateYCylinder = new Rotate(cylinderRotateYAxis, Rotate.Y_AXIS);
-					cylinder.getTransforms().add(rotateYCylinder);
+					if (selectedShape == cylinder) {
+						double cylinderRotateYAxis = rotateYSlider.getValue();
+						rotateYCylinder = new Rotate(cylinderRotateYAxis, Rotate.Y_AXIS);
+						cylinder.getTransforms().add(rotateYCylinder);
+					}
 				});
 				rotateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double cylinderRotateZAxis = rotateZSlider.getValue();
-					rotateZCylinder = new Rotate(cylinderRotateZAxis, Rotate.Z_AXIS);
-					cylinder.getTransforms().add(rotateZCylinder);
+					if (selectedShape == cylinder) {
+						double cylinderRotateZAxis = rotateZSlider.getValue();
+						rotateZCylinder = new Rotate(cylinderRotateZAxis, Rotate.Z_AXIS);
+						cylinder.getTransforms().add(rotateZCylinder);
+					}
 				});
 				translateXSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double cylinderTranslateXAxis = translateXSlider.getValue();
-					translateXCylinder = new Translate(cylinderTranslateXAxis, 0, 0);
-					cylinder.getTransforms().add(translateXCylinder);
+					if (selectedShape == cylinder) {
+						double cylinderTranslateXAxis = translateXSlider.getValue();
+						translateXCylinder = new Translate(cylinderTranslateXAxis, 0, 0);
+						cylinder.getTransforms().add(translateXCylinder);
+					}
 				});
 				translateYSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double cylinderTranslateYAxis = translateYSlider.getValue();
-					translateYCylinder = new Translate(0, cylinderTranslateYAxis, 0);
-					cylinder.getTransforms().add(translateYCylinder);
+					if (selectedShape == cylinder) {
+						double cylinderTranslateYAxis = translateYSlider.getValue();
+						translateYCylinder = new Translate(0, cylinderTranslateYAxis, 0);
+						cylinder.getTransforms().add(translateYCylinder);
+					}
 				});
 				translateZSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double cylinderTranslateZAxis = translateZSlider.getValue();
-					translateZCylinder = new Translate(0, 0, cylinderTranslateZAxis);
-					cylinder.getTransforms().add(translateZCylinder);
+					if (selectedShape == cylinder) {
+						double cylinderTranslateZAxis = translateZSlider.getValue();
+						translateZCylinder = new Translate(0, 0, cylinderTranslateZAxis);
+						cylinder.getTransforms().add(translateZCylinder);
+					}
 				});
 				scaleSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
-					double scaleValue = scaleSlider.getValue();
-					scaleCylinder = new Scale(scaleValue, scaleValue, scaleValue);
-					cylinder.getTransforms().add(scaleCylinder);
+					if (selectedShape == cylinder) {
+						double scaleValue = scaleSlider.getValue();
+						scaleCylinder = new Scale(scaleValue, scaleValue, scaleValue);
+						cylinder.getTransforms().add(scaleCylinder);
+					}
 				});
 
 				shapeColorPicker.setOnAction(new EventHandler() {
 					public void handle(Event e) {
 						cylinder.setMaterial(new PhongMaterial(shapeColorPicker.getValue()));
+						cColor = shapeColorPicker.getValue().toString();
+						cylinder.setUserData(cColor);
 					}
 				});
 
 				selectedShapeLabel.setText("Selected Shape: Cylinder is selected");
+				selectedShape = cylinder;
+				cylinderExists = true;
 
 			}
 
@@ -542,6 +587,9 @@ public class ShapeEditor extends Application {
 				box = new Box(boxWidth, boxHeight, boxDepth);
 				shapesGroup.getChildren().add(box);
 				box.getTransforms().addAll(new Translate(xVal, yVal, 0));
+				boxString = new String(
+						"Box" + "," + boxWidth + "," + boxHeight + "," + boxDepth + "," + xVal + "," + yVal);
+				shapeArray.add(boxString);
 				box.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerBox);
 			}
 			if (sphereCB.isSelected()) {
@@ -554,7 +602,12 @@ public class ShapeEditor extends Application {
 				}
 				sphere = new Sphere(sphereRadius);
 				shapesGroup.getChildren().add(sphere);
+				shapesGroup.getChildren().get(0).getLocalToSceneTransform();
+				shapesGroup.getChildren().get(0).getLocalToParentTransform();
+				shapesGroup.getChildren().get(0).getRotationAxis();
 				sphere.getTransforms().addAll(new Translate(xVal, yVal, 0));
+				sphereString = new String("Sphere" + "," + sphereRadius + "," + xVal + "," + yVal);
+				shapeArray.add(sphereString);
 				sphere.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerSphere);
 			}
 			if (cylinderCB.isSelected()) {
@@ -570,6 +623,9 @@ public class ShapeEditor extends Application {
 				cylinder = new Cylinder(cylinderRadius, cylinderHeight);
 				shapesGroup.getChildren().add(cylinder);
 				cylinder.getTransforms().addAll(new Translate(xVal, yVal, 0));
+				cylinderString = new String(
+						"Cylinder" + "," + cylinderRadius + "," + cylinderHeight + "," + xVal + "," + yVal);
+				shapeArray.add(cylinderString);
 				cylinder.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerCylinder);
 			}
 			pCamera = new PerspectiveCamera(true);
@@ -634,9 +690,10 @@ public class ShapeEditor extends Application {
 
 		menuBar = new MenuBar();
 		fileMenu = new Menu("File");
-		savePictureItem = new MenuItem("Save Image");
-		editPictureItem = new MenuItem("Edit Image");
-		fileMenu.getItems().addAll(savePictureItem, editPictureItem);
+		MenuItem saveSceneItem = new MenuItem("Save Scene");
+		savePictureItem = new MenuItem("Save As Image");
+		editPictureItem = new MenuItem("Load & Edit Scene");
+		fileMenu.getItems().addAll(savePictureItem, saveSceneItem, editPictureItem);
 		menuBar.getMenus().add(fileMenu);
 
 		rootNode.setTop(menuBar);
@@ -679,13 +736,263 @@ public class ShapeEditor extends Application {
 
 		});
 
+		saveSceneItem.setOnAction(new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				fileChooser = new FileChooser();
+
+				WritableImage image = shapesSub.snapshot(new SnapshotParameters(), null);
+				imageView.setImage(image);
+//				ObservableList<Transform> trx = shapesGroup.getChildren().get(0).getTransforms();
+
+				File file = fileChooser.showSaveDialog(window);
+
+				if (file != null) {
+					try {
+						FileWriter fileWriter = new FileWriter(file.getPath(), true);
+						PrintWriter outputFile = new PrintWriter(fileWriter);
+
+						for (int i = 0; i < shapeArray.size(); i++) {
+							String data = (String) shapeArray.get(i);
+							// outputFile.println(data);
+							String userData = (String) shapesGroup.getChildren().get(i).getUserData();
+							data += "," + userData;
+							outputFile.println(data);
+							String type[] = data.split(",");
+							ObservableList transform = shapesGroup.getChildren().get(i).getTransforms();
+							transform.forEach((tr) -> {
+								outputFile.println(type[0] + tr);
+							});
+
+						}
+						outputFile.close();
+					} catch (IOException ex) {
+						Logger.getLogger(ShapeEditor.class.getName()).log(Level.SEVERE, null, ex);
+					}
+				}
+
+			}
+
+		});
+
 		editPictureItem.setOnAction(new EventHandler<ActionEvent>() {
 
 			@Override
 			public void handle(ActionEvent event) {
 				FileChooser fileChooser = new FileChooser();
-				fileChooser.getExtensionFilters().add(new ExtensionFilter("*.png", "*.jpg", "*.txt"));
 				File selectedFile = fileChooser.showOpenDialog(primaryStage);
+				if (selectedFile != null) {
+
+					BufferedReader br = null;
+					try {
+						br = new BufferedReader(new FileReader(selectedFile));
+					} catch (FileNotFoundException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					String st;
+					try {
+						while ((st = br.readLine()) != null) {
+							String data = st;
+							String dataObject[] = data.split(",");
+
+							if (dataObject[0].equals("Box")) {
+								double w = Double.parseDouble(dataObject[1]);
+								double h = Double.parseDouble(dataObject[2]);
+								double d = Double.parseDouble(dataObject[3]);
+								String color = dataObject[6];
+								box = new Box(w, h, d);
+								shapesGroup.getChildren().add(box);
+								if (!color.equals("null")) {
+									box.setMaterial(new PhongMaterial(Color.web(color)));
+								}
+
+								box.getTransforms().addAll(new Translate(xVal, yVal, 0));
+								box.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerBox);
+							} else if (dataObject[0].equals("Sphere")) {
+								double r = Double.parseDouble(dataObject[1]);
+								String color = dataObject[4];
+
+								sphere = new Sphere(r);
+								shapesGroup.getChildren().add(sphere);
+								if (!color.equals("null")) {
+									sphere.setMaterial(new PhongMaterial(Color.web(color)));
+								}
+								// sphere.setMaterial(new PhongMaterial(Color.web(color)));
+
+								sphere.getTransforms().addAll(new Translate(xVal, yVal, 0));
+								sphere.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerSphere);
+							} else if (dataObject[0].equals("Cylinder")) {
+								double r = Double.parseDouble(dataObject[1]);
+								double h = Double.parseDouble(dataObject[2]);
+								String color = dataObject[5];
+
+								cylinder = new Cylinder(r, h);
+								shapesGroup.getChildren().add(cylinder);
+								if (!color.equals("null")) {
+									cylinder.setMaterial(new PhongMaterial(Color.web(color)));
+								}
+
+								cylinder.getTransforms().addAll(new Translate(xVal, yVal, 0));
+								cylinder.addEventHandler(MouseEvent.MOUSE_CLICKED, eventHandlerCylinder);
+							}
+
+							// SphereTranslate [x=0.025316455696202445, y=0.0, z=0.0]
+							// KYLAN FOR FOLLOW TRANSLATE
+							if (data.startsWith("SphereTranslate")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String x[] = location[0].split("=");
+								String y[] = location[1].split("=");
+								String z[] = location[2].split("=");
+								sphere.getTransforms().addAll(new Translate(Double.parseDouble(x[1]),
+										Double.parseDouble(y[1]), Double.parseDouble(z[1])));
+
+							}
+							// KYLAN FOR FOLLOW
+
+							if (data.startsWith("BoxTranslate")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String x[] = location[0].split("=");
+								String y[] = location[1].split("=");
+								String z[] = location[2].split("=");
+								box.getTransforms().addAll(new Translate(Double.parseDouble(x[1]),
+										Double.parseDouble(y[1]), Double.parseDouble(z[1])));
+							}
+
+							if (data.startsWith("CylinderTranslate")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String x[] = location[0].split("=");
+								String y[] = location[1].split("=");
+								String z[] = location[2].split("=");
+								cylinder.getTransforms().addAll(new Translate(Double.parseDouble(x[1]),
+										Double.parseDouble(y[1]), Double.parseDouble(z[1])));
+							}
+
+							// SphereRotate [angle=46.70886075949369, pivotX=0.0, pivotY=0.0, pivotZ=0.0,
+							// axis=Point3D [x = 0.0, y = 0.0, z = 1.0]]
+							if (data.startsWith("SphereRotate")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String angle[] = location[0].split("=");
+								String pivotX[] = location[1].split("=");
+								String pivotY[] = location[2].split("=");
+								String pivotZ[] = location[3].split("=");
+								String x[] = location[4].split("=");
+								String y[] = location[5].split("=");
+								String z[] = location[6].split("=");
+								if (x[2].contains("1.")) {
+									sphere.getTransforms()
+											.addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.X_AXIS));
+								} else if (y[1].contains("1.")) {
+									sphere.getTransforms()
+											.addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.Y_AXIS));
+
+								} else if (z[1].contains("1.")) {
+									sphere.getTransforms()
+											.addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.Z_AXIS));
+								}
+								// sphere.getTransforms().addAll(new Rotate(Double.parseDouble(angle[1]),
+								// Double.parseDouble(pivotX[1]), Double.parseDouble(pivotY[1]),
+								// Double.parseDouble(pivotZ[1])));
+							}
+
+							if (data.startsWith("CylinderRotate")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String angle[] = location[0].split("=");
+								String pivotX[] = location[1].split("=");
+								String pivotY[] = location[2].split("=");
+								String pivotZ[] = location[3].split("=");
+								String x[] = location[4].split("=");
+								String y[] = location[5].split("=");
+								String z[] = location[6].split("=");
+								if (x[2].contains("1.")) {
+									cylinder.getTransforms()
+											.addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.X_AXIS));
+								} else if (y[1].contains("1.")) {
+									cylinder.getTransforms()
+											.addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.Y_AXIS));
+
+								} else if (z[1].contains("1.")) {
+									cylinder.getTransforms()
+											.addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.Z_AXIS));
+								}
+							}
+
+							if (data.startsWith("BoxRotate")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String angle[] = location[0].split("=");
+								String pivotX[] = location[1].split("=");
+								String pivotY[] = location[2].split("=");
+								String pivotZ[] = location[3].split("=");
+								String x[] = location[4].split("=");
+								String y[] = location[5].split("=");
+								String z[] = location[6].split("=");
+								if (x[2].contains("1.")) {
+									box.getTransforms().addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.X_AXIS));
+								} else if (y[1].contains("1.")) {
+									box.getTransforms().addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.Y_AXIS));
+
+								} else if (z[1].contains("1.")) {
+									box.getTransforms().addAll(new Rotate(Double.parseDouble(angle[1]), Rotate.Z_AXIS));
+								}
+								// box.getTransforms().addAll(new Rotate(Double.parseDouble(angle[1]),
+								// Double.parseDouble(pivotX[1]), Double.parseDouble(pivotY[1]),
+								// Double.parseDouble(pivotZ[1])));
+							}
+
+							// SphereScale [x=1.1882911392405062, y=1.1882911392405062,
+							// z=1.1882911392405062, pivotX=0.0, pivotY=0.0, pivotZ=0.0]
+
+							if (data.startsWith("SphereScale")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String x[] = location[0].split("=");
+								String y[] = location[1].split("=");
+								String z[] = location[2].split("=");
+								sphere.getTransforms().addAll(new Scale(Double.parseDouble(x[1]),
+										Double.parseDouble(y[1]), Double.parseDouble(z[1])));
+							}
+
+							if (data.startsWith("BoxScale")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String x[] = location[0].split("=");
+								String y[] = location[1].split("=");
+								String z[] = location[2].split("=");
+								box.getTransforms().addAll(new Scale(Double.parseDouble(x[1]), Double.parseDouble(y[1]),
+										Double.parseDouble(z[1])));
+							}
+
+							if (data.startsWith("CylinderScale")) {
+								String result = data.substring(data.indexOf("[") + 1, data.indexOf("]"));
+								String location[] = result.split(",");
+								String x[] = location[0].split("=");
+								String y[] = location[1].split("=");
+								String z[] = location[2].split("=");
+								cylinder.getTransforms().addAll(new Scale(Double.parseDouble(x[1]),
+										Double.parseDouble(y[1]), Double.parseDouble(z[1])));
+							}
+
+						}
+					} catch (NumberFormatException | IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+					pCamera = new PerspectiveCamera(true);
+					pCamera.getTransforms().addAll(new Translate(0, 0, -60));
+					shapesSub.setCamera(pCamera);
+					window.setScene(firstScene);
+					refreshFirstScene();
+
+				}
+
 			}
 
 		});
@@ -693,20 +1000,20 @@ public class ShapeEditor extends Application {
 		window.setScene(firstScene);
 		window.setTitle("Shape Editor");
 		window.show();
+
 	}
 
 	private void refreshShapeEditor() {
-		xField.clear();
-		yField.clear();
 		boxCB.setSelected(false);
 		cylinderCB.setSelected(false);
 		sphereCB.setSelected(false);
-		boxWidthField.clear();
-		boxHeightField.clear();
-		boxDepthField.clear();
-		sphereRadiusField.clear();
-		cylinderRadiusField.clear();
-		cylinderHeightField.clear();
+		boxWidthField.setDisable(true);
+		boxDepthField.setDisable(true);
+		boxHeightField.setDisable(true);
+		sphereRadiusField.setDisable(true);
+		cylinderRadiusField.setDisable(true);
+		cylinderHeightField.setDisable(true);
+		submitButton.setDisable(true);
 	}
 
 	private void refreshFirstScene() {
@@ -719,4 +1026,16 @@ public class ShapeEditor extends Application {
 		scaleSlider.setValue(1);
 	}
 
+	public static void save(Serializable data, String fileName) throws Exception {
+		try (ObjectOutputStream oos = new ObjectOutputStream(Files.newOutputStream(Paths.get(fileName)))) {
+			oos.writeObject(data);
+		}
+	}
+
+	public static Object load(String fileName) throws Exception {
+		try (ObjectInputStream ois = new ObjectInputStream(Files.newInputStream(Paths.get(fileName)))) {
+			return ois.readObject();
+		}
+
+	}
 }
